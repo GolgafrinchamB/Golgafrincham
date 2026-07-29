@@ -1,0 +1,26 @@
+name: refresh-data
+on:
+  schedule:
+    - cron: "23 5 * * *"     # daily, 05:23 UTC
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch fresh element sets and SATCAT
+        run: bash build/fetch.sh
+      - name: Rebuild index.html
+        run: python3 build/build.py
+      - name: Commit and publish
+        run: |
+          git config user.name  "tle-refresh-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A data tracker/index.html
+          git diff --cached --quiet || git commit -m "data refresh $(date -u +%F)"
+          git push

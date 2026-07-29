@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Earth Orbit Catalog · Golgafrincham</title>
+<style>
+:root{
+  --bg:#05080f; --panel:rgba(9,14,22,.88); --line:#22303f; --line2:#16202c;
+  --ink:#c4d2df; --dim:#6e8093; --faint:#42566b; --amber:#e8a63d; --amber-hi:#ffcf6b;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--bg)}
+body{font-family:var(--mono);color:var(--ink);font-size:13px;-webkit-font-smoothing:antialiased}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#c.drag{cursor:grabbing}
+.lbl{font-size:10px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
+button{font-family:var(--mono);background:none;border:1px solid var(--line);color:var(--ink);
+  font-size:11px;letter-spacing:.08em;padding:6px 10px;cursor:pointer;border-radius:3px}
+button:hover{border-color:var(--amber);color:var(--amber-hi)}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+input{font-family:var(--mono);background:rgba(5,9,15,.7);border:1px solid var(--line);
+  color:var(--ink);font-size:12px;padding:8px 10px;border-radius:3px;width:100%}
+input::placeholder{color:var(--faint)}
+input:focus{border-color:var(--amber);outline:none}
+
+/* top bar */
+#topbar{position:fixed;top:0;left:0;right:0;display:flex;align-items:stretch;z-index:20;
+  background:linear-gradient(rgba(5,8,15,.92),rgba(5,8,15,.55) 75%,transparent);
+  padding:12px 16px 18px;gap:24px;pointer-events:none}
+#topbar>div{pointer-events:auto}
+#brand h1{font-size:15px;font-weight:600;letter-spacing:.22em;color:var(--ink)}
+#brand .lbl{margin-top:4px}
+#clockwrap{margin-left:auto;text-align:right;border-right:1px solid var(--line);padding-right:24px}
+#clock{font-size:15px;color:var(--amber-hi);letter-spacing:.06em;font-variant-numeric:tabular-nums}
+#clockwrap .lbl{margin-top:4px}
+#countwrap{text-align:right;min-width:120px}
+#count{font-size:15px;letter-spacing:.06em;font-variant-numeric:tabular-nums}
+#countwrap .lbl{margin-top:4px}
+
+/* left panel */
+#panel{position:fixed;top:74px;left:16px;width:308px;max-height:calc(100% - 160px);
+  display:flex;flex-direction:column;gap:14px;z-index:15;
+  background:var(--panel);border:1px solid var(--line);border-radius:4px;
+  padding:14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+#searchrow{position:relative}
+#results{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#0a111c;
+  border:1px solid var(--line);border-radius:3px;max-height:260px;overflow:auto;display:none;z-index:5}
+#results.open{display:block}
+.res{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;border-bottom:1px solid var(--line2)}
+.res:last-child{border-bottom:none}
+.res:hover,.res.hot{background:#101a28}
+.res .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+.res .id{color:var(--dim);font-size:11px}
+.dot{width:7px;height:7px;border-radius:50%;flex:none}
+#chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:3px;
+  padding:5px 9px;cursor:pointer;user-select:none;font-size:10px;letter-spacing:.1em;color:var(--ink)}
+.chip .ct{color:var(--dim);font-variant-numeric:tabular-nums}
+.chip.off{opacity:.32}
+.chip:hover{border-color:var(--amber)}
+#chiprow2{display:flex;gap:10px;margin-top:2px}
+#chiprow2 a{color:var(--faint);font-size:10px;letter-spacing:.12em;cursor:pointer;text-decoration:none}
+#chiprow2 a:hover{color:var(--amber-hi)}
+#obsec{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
+#obsec .sechead{font-size:9px;letter-spacing:.22em;color:var(--faint);margin-bottom:8px}
+#obsrow{display:flex;gap:6px;margin-bottom:7px}
+#obsrow input{flex:1;min-width:0;background:rgba(20,29,41,.7);border:1px solid var(--line);color:var(--ink);font:inherit;font-size:11px;padding:6px 8px;border-radius:4px}
+#obsrow input:focus{outline:none;border-color:var(--amber)}
+#obsrow button{font-size:10px;padding:6px 10px}
+#obsbtns{display:flex;gap:6px;margin-bottom:7px}
+#obsbtns button{flex:1;font-size:9px;padding:5px 4px}
+#pickglobe.armed{border-color:var(--amber);color:var(--amber-hi)}
+#obsstate{font-size:9.5px;line-height:1.6;color:var(--dim);letter-spacing:.06em;margin-bottom:7px;min-height:14px;white-space:pre-line}
+#ovctl{display:flex;align-items:center;gap:10px;margin-bottom:6px;font-size:9.5px;color:var(--dim);letter-spacing:.08em}
+#ovctl select{background:rgba(20,29,41,.7);border:1px solid var(--line);color:var(--ink);font:inherit;font-size:10px;padding:2px 4px;border-radius:4px}
+#ovctl label{display:flex;align-items:center;gap:5px;cursor:pointer}
+#overhead{max-height:200px;overflow-y:auto;margin:0 -6px}
+.ov{display:flex;align-items:center;gap:7px;padding:5px 6px;border-radius:5px;cursor:pointer;font-size:10.5px}
+.ov:hover{background:rgba(232,166,61,.08)}
+.ov .dot{width:6px;height:6px;border-radius:50%;flex:none}
+.ov .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.ov .st{flex:none;font-size:9px;letter-spacing:.06em}
+.ov .st.lit{color:var(--amber-hi)}
+.ov .st.shd{color:var(--faint)}
+.ov .geo{flex:none;color:var(--dim);font-size:9.5px;font-variant-numeric:tabular-nums}
+.ov .vis{color:var(--amber-hi);flex:none}
+#ovempty{font-size:10px;color:var(--faint);padding:4px 0 2px;letter-spacing:.06em}
+
+/* selection card */
+#card{border-top:1px solid var(--line);padding-top:12px}
+#cardname{font-size:14px;letter-spacing:.06em;color:var(--amber-hi);margin-bottom:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cardsub{font-size:11px;color:var(--dim);margin-bottom:10px;letter-spacing:.06em}
+#cardgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
+#cardgrid div .lbl{margin-bottom:2px;font-size:9px}
+#cardgrid div .v{font-size:12px;font-variant-numeric:tabular-nums}
+#carddismiss{margin-top:12px;width:100%;font-size:10px}
+#cardmission{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
+#cardmission .mline{font-size:11.5px;line-height:1.55;color:var(--ink);margin-bottom:9px}
+#cardmission .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px 14px;margin-bottom:4px}
+#cardmission .mgrid .lbl{margin-bottom:2px;font-size:9px}
+#cardmission .mgrid .v{font-size:11px}
+#cardmission .mgrid .wide{grid-column:1/-1}
+#cardmission .note{font-size:10.5px;line-height:1.5;color:var(--dim);margin-top:7px;font-style:italic}
+
+#panelfoot{display:flex;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+#panelfoot button{flex:1;font-size:10px}
+
+/* time bar */
+#timebar{position:fixed;left:50%;transform:translateX(-50%);bottom:34px;z-index:15;
+  display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);
+  border-radius:4px;padding:8px 10px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+#timebar button{min-width:38px}
+#speedbox{min-width:86px;text-align:center;font-size:11px;letter-spacing:.1em;color:var(--amber-hi)}
+
+/* footer */
+#foot{position:fixed;left:0;right:0;bottom:0;padding:8px 16px;z-index:10;text-align:right;
+  font-size:9px;letter-spacing:.14em;color:var(--faint);pointer-events:none}
+
+/* loader */
+#loader{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;transition:opacity .6s}
+#loader.done{opacity:0;pointer-events:none}
+#loadtitle{font-size:16px;letter-spacing:.3em;color:var(--ink)}
+#sitelink{display:block;font-size:8.5px;letter-spacing:.34em;color:var(--faint);text-decoration:none;margin-bottom:3px}
+#sitelink:hover{color:var(--amber-hi)}
+#loadstage{font-size:10px;letter-spacing:.2em;color:var(--amber)}
+#bar{width:min(320px,70vw);height:2px;background:var(--line2)}
+#barfill{height:100%;width:0%;background:var(--amber)}
+#loadnum{font-size:10px;letter-spacing:.14em;color:var(--dim);font-variant-numeric:tabular-nums}
+#loaderr{max-width:min(420px,80vw);color:#ef6b5e;font-size:11px;line-height:1.6;text-align:center;display:none}
+
+/* modal */
+#modalwrap{position:fixed;inset:0;z-index:40;background:rgba(3,5,9,.72);display:none;
+  align-items:center;justify-content:center;padding:20px}
+#modalwrap.open{display:flex}
+#modal{width:min(560px,100%);max-height:84vh;overflow:auto;background:#0a111c;
+  border:1px solid var(--line);border-radius:4px;padding:22px}
+#modal h2{font-size:12px;letter-spacing:.2em;color:var(--amber-hi);margin-bottom:14px;font-weight:600}
+#modal .prose{font-family:var(--sans);font-size:13px;line-height:1.65;color:var(--ink)}
+#modal .prose p{margin-bottom:10px}
+#modal .prose em{color:var(--dim);font-style:normal}
+#modal kbd{font-family:var(--mono);border:1px solid var(--line);border-radius:3px;padding:1px 6px;
+  font-size:11px;color:var(--amber-hi)}
+#modal textarea{width:100%;height:150px;background:rgba(5,9,15,.7);border:1px solid var(--line);
+  color:var(--ink);font-family:var(--mono);font-size:11px;padding:10px;border-radius:3px;resize:vertical}
+#modal .row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+#modal .keys{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin:12px 0;font-size:11px;align-items:center}
+#loadstatus{font-size:11px;color:var(--dim);margin-top:10px;min-height:16px}
+
+@keyframes pulse{0%{transform:scale(.6);opacity:.9}100%{transform:scale(1.9);opacity:0}}
+@media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important} }
+
+/* mobile */
+@media (max-width:720px){
+  #brand h1{font-size:12px;letter-spacing:.16em}
+  #brand .lbl,#clockwrap .lbl,#countwrap .lbl{display:none}
+  #clockwrap{border-right:none;padding-right:0}
+  #clock{font-size:12px}
+  #countwrap{display:none}
+  #topbar{gap:12px;padding:10px 12px 14px}
+  #panel{top:auto;left:8px;right:8px;bottom:78px;width:auto;max-height:40vh;overflow-y:auto}
+  #timebar{bottom:10px;width:calc(100% - 16px);justify-content:center}
+  #foot{display:none}
+}
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="3D view of Earth and satellite catalog"></canvas>
+
+<header id="topbar">
+  <div id="brand">
+    <a id="sitelink" href="../">GOLGAFRINCHAM</a>
+    <h1>EARTH ORBIT CATALOG</h1>
+    <div class="lbl">SGP4 · TEME frame · CelesTrak elements</div>
+  </div>
+  <div id="clockwrap">
+    <div id="clock">····-··-·· ··:··:··</div>
+    <div class="lbl">UTC · <span id="spdlabel">real time</span> · <span id="doy">DOY —</span></div>
+  </div>
+  <div id="countwrap">
+    <div id="count">—</div>
+    <div class="lbl">objects displayed</div>
+  </div>
+</header>
+
+<aside id="panel" aria-label="Catalog controls">
+  <div id="searchrow">
+    <input id="search" type="text" autocomplete="off" spellcheck="false"
+      placeholder="Search name or NORAD ID   ( / )" aria-label="Search satellites">
+    <div id="results" role="listbox"></div>
+  </div>
+  <div>
+    <div class="lbl" style="margin-bottom:8px">Categories</div>
+    <div id="chips"></div>
+    <div id="chiprow2"><a id="allon">ALL</a><a id="alloff">NONE</a></div>
+  </div>
+  <div id="obsec">
+    <div class="sechead">OBSERVER — SEE WHAT'S OVERHEAD</div>
+    <div id="obsrow">
+      <input id="obslat" inputmode="decimal" placeholder="LAT (−34.93)" aria-label="latitude">
+      <input id="obslon" inputmode="decimal" placeholder="LON (138.60)" aria-label="longitude">
+      <button id="obsset">SET</button>
+    </div>
+    <div id="obsbtns">
+      <button id="obsgeo">MY LOCATION</button>
+      <button id="pickglobe">PICK ON GLOBE</button>
+      <button id="obsclear">CLEAR</button>
+    </div>
+    <div id="obsstate">No observer set — enter coordinates, use device location, or pick a point on the globe.</div>
+    <div id="ovctl" hidden>
+      <span>ABOVE</span>
+      <select id="minel"><option value="0">0°</option><option value="10" selected>10°</option><option value="25">25°</option></select>
+      <label><input type="checkbox" id="visonly"> SUNLIT ONLY</label>
+    </div>
+    <div id="overhead"></div>
+  </div>
+  <div id="card" hidden>
+    <div id="cardname"></div>
+    <div id="cardsub"></div>
+    <div id="cardgrid"></div>
+    <div id="cardmission"></div>
+    <button id="carddismiss">CLEAR SELECTION (ESC)</button>
+  </div>
+  <div id="panelfoot">
+    <button id="loadbtn">LOAD TLE SET</button>
+    <button id="aboutbtn">ABOUT / KEYS</button>
+  </div>
+</aside>
+
+<div id="timebar" aria-label="Time controls">
+  <button id="pauseb" title="Pause / resume (Space)">PAUSE</button>
+  <button id="slower" title="Slower">−</button>
+  <div id="speedbox">REAL TIME</div>
+  <button id="faster" title="Faster">+</button>
+  <button id="nowb" title="Jump to current time (N)">NOW</button>
+</div>
+
+<footer id="foot"><span id="footinfo">ELEMENTS: CELESTRAK ACTIVE CATALOG · PROPAGATION: SGP4 / SATELLITE.JS</span></footer>
+
+<div id="loader">
+  <div id="loadtitle">EARTH ORBIT CATALOG</div>
+  <div id="loadstage">DECOMPRESSING ELEMENT SETS</div>
+  <div id="bar"><div id="barfill"></div></div>
+  <div id="loadnum"></div>
+  <div id="loaderr"></div>
+</div>
+
+<div id="modalwrap"><div id="modal" role="dialog" aria-modal="true"></div></div>
